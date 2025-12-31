@@ -33,27 +33,19 @@ def log(msg: str) -> None:
 
 def main() -> None:
     """Main entry point."""
-    log("[LOG] Initializing OpenAI client...")
+    log("Starting Home Assistant...")
     client = OpenAI()
-
-    log("[LOG] Loading wake word model...")
     detector = WakeWordDetector(model_name=WAKE_WORD)
-
-    log("[LOG] Initializing VAD...")
     vad = webrtcvad.Vad(2)  # Aggressiveness 0-3
 
-    log("[LOG] Starting audio stream...")
-    log("")
-    log("Home Assistant started.")
-    log(f"Wake word: {WAKE_WORD}")
+    log(f"Listening for '{WAKE_WORD.replace('_', ' ')}'...")
     log("")
 
     with AudioStream() as stream:
-        log("[LOG] Audio stream active. Listening...")
         while True:
             # 1. Wait for wake word
             wait_for_wake_word(stream, detector, debug=DEBUG)
-            log("[LOG] Wake word detected!")
+            log("[Activated]")
 
             # 2. Record speech
             audio_bytes = record_until_silence(
@@ -61,25 +53,27 @@ def main() -> None:
                 vad,
                 silence_duration=SILENCE_THRESHOLD,
             )
-            log(f"[LOG] Silence detected. Recorded {len(audio_bytes)} bytes.")
 
             if len(audio_bytes) < 1000:
-                log("[LOG] No speech detected (too short).")
+                log("(No speech detected)")
+                log("")
                 continue
 
             # 3. Transcribe
-            log("[LOG] Transcribing...")
             wav_buffer = audio_to_wav_buffer(audio_bytes)
             text = transcribe(client, wav_buffer)
-            log(f"[LOG] Transcription: {text}")
 
             if not text.strip():
-                log("[LOG] Empty transcription.")
+                log("(Empty transcription)")
+                log("")
                 continue
+
+            log(f"You: {text}")
+            log("")
 
             # # 4. Process with LLM
             # response = process_message(client, text, model=MODEL)
-            # print(f"Assistant: {response}")
+            # log(f"Assistant: {response}")
 
             # # 5. Speak response
             # speak(client, response, voice=TTS_VOICE)
@@ -89,5 +83,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n[LOG] Shutting down. Goodbye, sir.")
+        print("\n\nThank you for using Home Assistant. Until next time.")
         exit(0)

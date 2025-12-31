@@ -178,7 +178,7 @@ This downloads models for: `alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`, 
 ### 4. Run
 
 ```bash
-uv run python main.py
+uv run main.py
 ```
 
 Say "Hey Jarvis" to activate, then speak your command.

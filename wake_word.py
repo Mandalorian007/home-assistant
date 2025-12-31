@@ -40,7 +40,6 @@ class WakeWordDetector:
 
         for name, score in prediction.items():
             if score >= self.threshold:
-                print(f"Wake word '{name}' detected (score: {score:.2f})", flush=True)
                 return True
 
         return False
@@ -62,7 +61,6 @@ def wait_for_wake_word(
         detector: Wake word detector instance
         debug: Print detection scores
     """
-    print(f"Waiting for wake word '{detector.model_name}'...", flush=True)
 
     # Accumulate audio into larger chunks for wake word detection
     # openWakeWord expects ~80ms chunks (1280 samples at 16kHz)

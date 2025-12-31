@@ -77,8 +77,6 @@ def record_until_silence(
     max_silent_frames = int(silence_duration * 1000 / FRAME_DURATION_MS)
     max_frames = int(max_duration * 1000 / FRAME_DURATION_MS)
 
-    print("Listening...")
-
     for _ in range(max_frames):
         audio = stream.read(timeout=1.0)
         if audio is None:
@@ -97,7 +95,6 @@ def record_until_silence(
         if silent_frames >= max_silent_frames and len(frames) > max_silent_frames:
             break
 
-    print("Done listening.")
     return b"".join(frames)
 
 

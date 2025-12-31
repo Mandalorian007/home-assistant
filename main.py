@@ -15,13 +15,13 @@ from openai import OpenAI
 from audio import AudioStream, record_until_silence, audio_to_wav_buffer
 from wake_word import WakeWordDetector, wait_for_wake_word
 from transcribe import transcribe
-# from tts import speak
-# from assistant import process_message
+from tts import speak
+from assistant import process_message
 
 # Configuration
 WAKE_WORD = os.getenv("WAKE_WORD", "hey_jarvis")
-# MODEL = os.getenv("MODEL", "gpt-4o")
-# TTS_VOICE = os.getenv("TTS_VOICE", "alloy")
+MODEL = os.getenv("MODEL", "gpt-4o")
+TTS_VOICE = os.getenv("TTS_VOICE", "alloy")
 SILENCE_THRESHOLD = float(os.getenv("SILENCE_THRESHOLD", "0.5"))
 DEBUG = os.getenv("DEBUG", "").lower() in ("1", "true", "yes")
 
@@ -69,14 +69,14 @@ def main() -> None:
                 continue
 
             log(f"You: {text}")
+
+            # 4. Process with LLM
+            response = process_message(client, text, model=MODEL)
+            log(f"Assistant: {response}")
             log("")
 
-            # # 4. Process with LLM
-            # response = process_message(client, text, model=MODEL)
-            # log(f"Assistant: {response}")
-
-            # # 5. Speak response
-            # speak(client, response, voice=TTS_VOICE)
+            # 5. Speak response
+            speak(client, response, voice=TTS_VOICE)
 
 
 if __name__ == "__main__":

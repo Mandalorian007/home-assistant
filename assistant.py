@@ -1,14 +1,25 @@
 """LLM assistant with tool support."""
 
 import json
+from datetime import datetime
+from typing import cast
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
+from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 
 from tools import TOOLS, execute_tool
 
-SYSTEM_PROMPT = """You are a helpful voice assistant. Keep responses concise and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or other text-only constructs."""
-
 DEFAULT_MODEL = "gpt-4o"
+
+
+def get_system_prompt() -> str:
+    """Generate system prompt with current timestamp."""
+    now = datetime.now()
+    timestamp = now.strftime("%A, %B %d, %Y at %I:%M %p")
+
+    return f"""You are a helpful voice assistant. Keep responses concise and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or other text-only constructs.
+
+Current time: {timestamp}"""
 
 
 def process_message(
@@ -29,21 +40,26 @@ def process_message(
         Final text response to speak
     """
     messages: list[ChatCompletionMessageParam] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": get_system_prompt()},
         {"role": "user", "content": user_message},
     ]
 
-    tools: list[ChatCompletionToolParam] = [
-        {"type": "function", "function": tool["function"]}
-        for tool in TOOLS
-    ]
+    tools: list[ChatCompletionToolParam] | None = None
+    if TOOLS:
+        tools = [
+            {"type": "function", "function": tool["function"]}
+            for tool in TOOLS
+        ]
 
     while True:
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=tools if tools else None,
-        )
+        kwargs: dict = {
+            "model": model,
+            "messages": messages,
+        }
+        if tools:
+            kwargs["tools"] = tools
+
+        response = client.chat.completions.create(**kwargs)  # type: ignore[arg-type]
 
         choice = response.choices[0]
         message = choice.message
@@ -53,6 +69,7 @@ def process_message(
             return message.content or ""
 
         # Add assistant message with tool calls
+        tool_calls = cast(list[ChatCompletionMessageToolCall], message.tool_calls)
         messages.append({
             "role": "assistant",
             "content": message.content,
@@ -65,16 +82,16 @@ def process_message(
                         "arguments": tc.function.arguments,
                     },
                 }
-                for tc in message.tool_calls
+                for tc in tool_calls
             ],
         })
 
         # Execute each tool and add results
-        for tool_call in message.tool_calls:
+        for tool_call in tool_calls:
             name = tool_call.function.name
             args = json.loads(tool_call.function.arguments)
 
-            print(f"Executing tool: {name}({args})")
+            print(f"[Tool: {name}]", flush=True)
             result = execute_tool(name, args)
 
             messages.append({

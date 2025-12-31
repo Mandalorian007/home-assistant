@@ -121,35 +121,46 @@ while True:
 
 ## Tools
 
-Tools are defined as simple functions with JSON schema definitions:
+Tools are defined using Pydantic models with the `@tool` decorator. The model's docstring becomes the tool description, and `Field()` descriptions document parameters.
+
+### Defining a Tool
+
+Create a new file in `tools/`:
 
 ```python
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get current weather for a location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {"type": "string"}
-                },
-                "required": ["location"]
-            }
-        }
-    }
-]
+# tools/weather.py
+from pydantic import BaseModel, Field
+from tools.base import tool
 
-def get_weather(location: str) -> str:
-    # Implementation
-    ...
+
+class GetWeather(BaseModel):
+    """Get the current weather for a location."""
+
+    location: str = Field(description="City and country e.g. Paris, France")
+
+
+@tool(GetWeather)
+def get_weather(params: GetWeather) -> str:
+    # Your implementation here
+    return f"The weather in {params.location} is sunny and 72°F."
 ```
 
-Add new tools by:
-1. Adding the schema to `TOOLS`
-2. Implementing the function
-3. Registering in the tool dispatcher
+### Registering the Tool
+
+Import your tool module in `tools/__init__.py`:
+
+```python
+from tools import weather  # noqa: F401
+from tools import time     # noqa: F401
+from tools import my_tool  # Add your new tool here
+```
+
+### How It Works
+
+1. `@tool(Model)` registers the Pydantic model with OpenAI's `pydantic_function_tool()`
+2. The LLM sees the tool name, description, and parameter schema
+3. When called, arguments are validated through Pydantic
+4. Your handler receives a typed `params` object
 
 ## Setup
 
@@ -206,7 +217,8 @@ home-assistant/
 ├── tts.py               # TTS API wrapper and playback
 ├── assistant.py         # Chat completion with tools
 ├── tools/               # Tool implementations
-│   ├── __init__.py
+│   ├── __init__.py      # Tool registry
+│   ├── base.py          # @tool decorator
 │   ├── weather.py
 │   └── time.py
 └── pyproject.toml

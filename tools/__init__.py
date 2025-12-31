@@ -5,7 +5,6 @@ from tools.base import execute_tool, get_tools
 
 # Import tools to trigger registration
 from tools import weather  # noqa: F401
-from tools import time  # noqa: F401
 
 # Export registered tools
 TOOLS = get_tools()

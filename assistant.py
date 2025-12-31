@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import cast
 from openai import OpenAI
-from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
+from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 
 from tools import TOOLS, execute_tool
@@ -44,20 +44,13 @@ def process_message(
         {"role": "user", "content": user_message},
     ]
 
-    tools: list[ChatCompletionToolParam] | None = None
-    if TOOLS:
-        tools = [
-            {"type": "function", "function": tool["function"]}
-            for tool in TOOLS
-        ]
-
     while True:
         kwargs: dict = {
             "model": model,
             "messages": messages,
         }
-        if tools:
-            kwargs["tools"] = tools
+        if TOOLS:
+            kwargs["tools"] = TOOLS
 
         response = client.chat.completions.create(**kwargs)  # type: ignore[arg-type]
 

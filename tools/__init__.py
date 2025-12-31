@@ -1,49 +1,13 @@
-"""Tool registry and execution."""
+"""Tool registry."""
 
-from typing import Any, Callable
+# Import base functionality
+from tools.base import execute_tool, get_tools
 
-from tools.weather import get_weather, WEATHER_TOOL
-from tools.time import get_current_time, TIME_TOOL
+# Import tools to trigger registration
+from tools import weather  # noqa: F401
+from tools import time  # noqa: F401
 
-# Tool definitions for OpenAI API
-TOOLS = [
-    WEATHER_TOOL,
-    TIME_TOOL,
-]
+# Export registered tools
+TOOLS = get_tools()
 
-# Tool function registry
-_TOOL_FUNCTIONS: dict[str, Callable[..., str]] = {
-    "get_weather": get_weather,
-    "get_current_time": get_current_time,
-}
-
-
-def register_tool(name: str, func: Callable[..., str], schema: dict[str, Any]) -> None:
-    """Register a new tool.
-
-    Args:
-        name: Tool function name
-        func: Tool function implementation
-        schema: OpenAI tool schema
-    """
-    _TOOL_FUNCTIONS[name] = func
-    TOOLS.append(schema)
-
-
-def execute_tool(name: str, args: dict[str, Any]) -> str:
-    """Execute a tool by name.
-
-    Args:
-        name: Tool function name
-        args: Tool arguments
-
-    Returns:
-        Tool result as string
-    """
-    if name not in _TOOL_FUNCTIONS:
-        return f"Error: Unknown tool '{name}'"
-
-    try:
-        return _TOOL_FUNCTIONS[name](**args)
-    except Exception as e:
-        return f"Error executing {name}: {e}"
+__all__ = ["TOOLS", "execute_tool"]

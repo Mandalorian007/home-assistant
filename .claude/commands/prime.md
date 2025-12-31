@@ -17,7 +17,8 @@ Stop here if environment is not valid.
 
 @README.md
 @.claude/skills/*/SKILL.md
-!`git ls-files ':!public/diablo-immortal/legendary/' ':!public/diablo-immortal/skills/' ':!public/diablo-immortal/paragon/' ':!public/diablo-immortal/sets/'`
+@docs/
+!`git ls-files`
 
 ## Report
 

@@ -1,0 +1,19 @@
+[project]
+name = "search-cli"
+version = "1.0.0"
+description = "Internet search CLI powered by Perplexity API"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+search = "src.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

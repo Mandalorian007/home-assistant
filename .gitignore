@@ -29,6 +29,7 @@ __pycache__/
 *.py[cod]
 *.so
 .venv/
+history.db
 
 # debug
 npm-debug.log*

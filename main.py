@@ -17,6 +17,7 @@ from wake_word import WakeWordDetector, wait_for_wake_word
 from transcribe import transcribe
 from tts import speak
 from assistant import process_message
+from history_store import save_conversation
 
 # Configuration
 WAKE_WORD = os.getenv("WAKE_WORD", "hey_jarvis")
@@ -71,12 +72,19 @@ def main() -> None:
             log(f"You: {text}")
 
             # 4. Process with LLM
-            response = process_message(client, text, model=MODEL)
-            log(f"Assistant: {response}")
+            result = process_message(client, text, model=MODEL)
+            log(f"Assistant: {result.final_response}")
             log("")
 
-            # 5. Speak response
-            speak(client, response, voice=TTS_VOICE)
+            # 5. Save to history
+            save_conversation(
+                result.user_input,
+                result.final_response,
+                result.tool_calls,
+            )
+
+            # 6. Speak response
+            speak(client, result.final_response, voice=TTS_VOICE)
 
 
 if __name__ == "__main__":

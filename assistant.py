@@ -1,8 +1,10 @@
 """LLM assistant with tool support."""
 
 import json
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
+
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
@@ -12,6 +14,15 @@ from tools import TOOLS, execute_tool
 DEFAULT_MODEL = "gpt-4o"
 
 
+@dataclass
+class ConversationResult:
+    """Result of processing a user message."""
+
+    user_input: str
+    final_response: str
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+
+
 def get_system_prompt() -> str:
     """Generate system prompt with current timestamp."""
     now = datetime.now()
@@ -19,15 +30,17 @@ def get_system_prompt() -> str:
 
     return f"""You are a helpful voice assistant. Keep responses concise and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or other text-only constructs.
 
-Current time: {timestamp}"""
+Current time: {timestamp}
+
+If the user asks about previous conversations, references something discussed before, or asks "what did I ask earlier", use the GetHistory tool to look up past interactions."""
 
 
 def process_message(
     client: OpenAI,
     user_message: str,
     model: str = DEFAULT_MODEL,
-) -> str:
-    """Process a user message and return the assistant response.
+) -> ConversationResult:
+    """Process a user message and return the conversation result.
 
     Handles the tool execution loop internally.
 
@@ -37,12 +50,13 @@ def process_message(
         model: Model to use for chat completion
 
     Returns:
-        Final text response to speak
+        ConversationResult with user input, response, and tool calls
     """
     messages: list[ChatCompletionMessageParam] = [
         {"role": "system", "content": get_system_prompt()},
         {"role": "user", "content": user_message},
     ]
+    tracked_tool_calls: list[dict[str, Any]] = []
 
     while True:
         kwargs: dict = {
@@ -57,9 +71,13 @@ def process_message(
         choice = response.choices[0]
         message = choice.message
 
-        # No tool calls - return the response
+        # No tool calls - return the result
         if not message.tool_calls:
-            return message.content or ""
+            return ConversationResult(
+                user_input=user_message,
+                final_response=message.content or "",
+                tool_calls=tracked_tool_calls,
+            )
 
         # Add assistant message with tool calls
         tool_calls = cast(list[ChatCompletionMessageToolCall], message.tool_calls)
@@ -86,6 +104,13 @@ def process_message(
 
             print(f"[Tool: {name}]", flush=True)
             result = execute_tool(name, args)
+
+            # Track tool call for history
+            tracked_tool_calls.append({
+                "name": name,
+                "arguments": args,
+                "result": result,
+            })
 
             messages.append({
                 "role": "tool",

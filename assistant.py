@@ -13,6 +13,21 @@ from tools import TOOLS, execute_tool
 
 DEFAULT_MODEL = "gpt-4o"
 
+SYSTEM_PROMPT = """
+You are a helpful voice assistant.
+
+## Response Style
+- Keep responses concise and conversational
+- Responses will be spoken aloud, so avoid markdown, bullet points, or text-only formatting
+
+## Current Time
+{timestamp}
+
+## History
+If the user asks about previous conversations, references something discussed before,
+or asks "what did I ask earlier", use the GetHistory tool to look up past interactions.
+""".strip()
+
 
 @dataclass
 class ConversationResult:
@@ -27,12 +42,7 @@ def get_system_prompt() -> str:
     """Generate system prompt with current timestamp."""
     now = datetime.now()
     timestamp = now.strftime("%A, %B %d, %Y at %I:%M %p")
-
-    return f"""You are a helpful voice assistant. Keep responses concise and conversational since they will be spoken aloud. Avoid markdown formatting, bullet points, or other text-only constructs.
-
-Current time: {timestamp}
-
-If the user asks about previous conversations, references something discussed before, or asks "what did I ask earlier", use the GetHistory tool to look up past interactions."""
+    return SYSTEM_PROMPT.format(timestamp=timestamp)
 
 
 def process_message(

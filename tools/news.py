@@ -1,8 +1,12 @@
-"""News tool using BBC News API."""
+#!/usr/bin/env python3
+"""News tool using BBC News API.
+
+CLI: uv run news
+Tool: Registered as GetNews for OpenAI function calling
+"""
 
 import httpx
 from pydantic import BaseModel
-from tools.base import tool
 
 BBC_NEWS_URL = "https://bbc-news-api.vercel.app/news?lang=english"
 
@@ -78,8 +82,9 @@ def _extract_articles(data: dict) -> list[dict]:
 class GetNews(BaseModel):
     """Get the latest news headlines. Returns top stories for you to select the most interesting."""
 
+    pass
 
-@tool(GetNews)
+
 def get_news(params: GetNews) -> str:
     """Fetch news from BBC and return with selection guidance."""
     try:
@@ -107,3 +112,18 @@ def get_news(params: GetNews) -> str:
 
     except httpx.HTTPError as e:
         return f"News service error: {e}"
+
+
+# ─── Dual Mode: CLI + Tool ─────────────────────────────────────────────────
+
+def main() -> None:
+    """CLI entry point."""
+    from tools.base import run
+    run(GetNews, get_news)
+
+
+if __name__ == "__main__":
+    main()
+else:
+    from tools.base import tool
+    tool(GetNews)(get_news)

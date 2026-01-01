@@ -1,8 +1,12 @@
-"""Weather tool using Open-Meteo API."""
+#!/usr/bin/env python3
+"""Weather tool using Open-Meteo API.
+
+CLI: uv run weather "New York"
+Tool: Registered as GetWeather for OpenAI function calling
+"""
 
 import httpx
 from pydantic import BaseModel, Field
-from tools.base import tool
 
 GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
@@ -120,7 +124,6 @@ class GetWeather(BaseModel):
     )
 
 
-@tool(GetWeather)
 def get_weather(params: GetWeather) -> str:
     """Fetch real weather data from Open-Meteo API."""
     try:
@@ -146,3 +149,18 @@ def get_weather(params: GetWeather) -> str:
         return str(e)
     except httpx.HTTPError as e:
         return f"Weather service error: {e}"
+
+
+# ─── Dual Mode: CLI + Tool ─────────────────────────────────────────────────
+
+def main() -> None:
+    """CLI entry point."""
+    from tools.base import run
+    run(GetWeather, get_weather)
+
+
+if __name__ == "__main__":
+    main()
+else:
+    from tools.base import tool
+    tool(GetWeather)(get_weather)

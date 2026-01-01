@@ -1,9 +1,15 @@
-"""History lookup tool for recalling past conversations."""
+#!/usr/bin/env python3
+"""History lookup tool for recalling past conversations.
+
+CLI: uv run history                    # show recent conversations
+     uv run history --query "weather"  # search for specific topic
+     uv run history --limit 10         # show more results
+Tool: Registered as GetHistory for OpenAI function calling
+"""
 
 from pydantic import BaseModel, Field
 
 from history_store import get_recent_history, search_history
-from tools.base import tool
 
 
 class GetHistory(BaseModel):
@@ -19,7 +25,6 @@ class GetHistory(BaseModel):
     )
 
 
-@tool(GetHistory)
 def get_history(params: GetHistory) -> str:
     """Retrieve past conversations from history."""
     limit = min(params.limit, 20)
@@ -44,3 +49,18 @@ def get_history(params: GetHistory) -> str:
         lines.append("")
 
     return "\n".join(lines).strip()
+
+
+# ─── Dual Mode: CLI + Tool ─────────────────────────────────────────────────
+
+def main() -> None:
+    """CLI entry point."""
+    from tools.base import run
+    run(GetHistory, get_history)
+
+
+if __name__ == "__main__":
+    main()
+else:
+    from tools.base import tool
+    tool(GetHistory)(get_history)

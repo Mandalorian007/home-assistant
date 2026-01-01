@@ -18,6 +18,23 @@ dependencies = [
 
 [project.scripts]
 assistant = "main:main"
+weather = "tools.weather:main"
+news = "tools.news:main"
+search = "tools.search:main"
+volume = "tools.device_volume:main"
+history = "tools.history:main"
 
 [tool.uv]
-dev-dependencies = []
+package = true
+dev-dependencies = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tools"]
+include = [
+    "*.py",
+    "tools/**/*.py",
+]

@@ -1,8 +1,13 @@
-"""Device volume control using macOS AppleScript."""
+#!/usr/bin/env python3
+"""Device volume control using macOS AppleScript.
+
+CLI: uv run volume          # get current volume
+     uv run volume 50       # set volume to 50%
+Tool: Registered as GetDeviceVolume and SetDeviceVolume for OpenAI function calling
+"""
 
 import subprocess
 from pydantic import BaseModel, Field
-from tools.base import tool
 
 
 def _run_applescript(script: str) -> str:
@@ -35,13 +40,26 @@ def _get_volume_state() -> dict:
     return state
 
 
+# ─── Models ────────────────────────────────────────────────────────────────
+
 class GetDeviceVolume(BaseModel):
     """Get the current device speaker volume and mute status."""
 
     pass
 
 
-@tool(GetDeviceVolume)
+class SetDeviceVolume(BaseModel):
+    """Set the device speaker volume. Use this for system/device volume, not music volume."""
+
+    volume: int = Field(
+        description="Volume level from 0 to 100",
+        ge=0,
+        le=100,
+    )
+
+
+# ─── Handlers ──────────────────────────────────────────────────────────────
+
 def get_device_volume(params: GetDeviceVolume) -> str:
     """Get current macOS system volume."""
     try:
@@ -57,17 +75,6 @@ def get_device_volume(params: GetDeviceVolume) -> str:
         return f"Error getting device volume: {e}"
 
 
-class SetDeviceVolume(BaseModel):
-    """Set the device speaker volume. Use this for system/device volume, not music volume."""
-
-    volume: int = Field(
-        description="Volume level from 0 to 100",
-        ge=0,
-        le=100,
-    )
-
-
-@tool(SetDeviceVolume)
 def set_device_volume(params: SetDeviceVolume) -> str:
     """Set macOS system volume."""
     try:
@@ -80,3 +87,35 @@ def set_device_volume(params: SetDeviceVolume) -> str:
 
     except Exception as e:
         return f"Error setting device volume: {e}"
+
+
+# ─── Dual Mode: CLI + Tool ─────────────────────────────────────────────────
+
+def main() -> None:
+    """CLI entry point."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Get or set device volume",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "volume",
+        nargs="?",
+        type=int,
+        help="Volume level 0-100 (omit to show current volume)",
+    )
+    args = parser.parse_args()
+
+    if args.volume is not None:
+        print(set_device_volume(SetDeviceVolume(volume=args.volume)))
+    else:
+        print(get_device_volume(GetDeviceVolume()))
+
+
+if __name__ == "__main__":
+    main()
+else:
+    from tools.base import tool
+    tool(GetDeviceVolume)(get_device_volume)
+    tool(SetDeviceVolume)(set_device_volume)

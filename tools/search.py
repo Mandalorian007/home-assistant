@@ -1,10 +1,14 @@
-"""Internet search tool using Perplexity API."""
+#!/usr/bin/env python3
+"""Internet search tool using Perplexity API.
+
+CLI: uv run search "your query here"
+Tool: Registered as SearchInternet for OpenAI function calling
+"""
 
 import os
 import re
 import httpx
 from pydantic import BaseModel, Field
-from tools.base import tool
 
 PERPLEXITY_URL = "https://api.perplexity.ai/chat/completions"
 
@@ -51,7 +55,6 @@ class SearchInternet(BaseModel):
     query: str = Field(description="The search query")
 
 
-@tool(SearchInternet)
 def search_internet(params: SearchInternet) -> str:
     """Search the internet using Perplexity API."""
     api_key = _get_api_key()
@@ -71,3 +74,18 @@ def search_internet(params: SearchInternet) -> str:
         return f"Search error: API returned status {e.response.status_code}"
     except httpx.HTTPError as e:
         return f"Search error: {e}"
+
+
+# ─── Dual Mode: CLI + Tool ─────────────────────────────────────────────────
+
+def main() -> None:
+    """CLI entry point."""
+    from tools.base import run
+    run(SearchInternet, search_internet)
+
+
+if __name__ == "__main__":
+    main()
+else:
+    from tools.base import tool
+    tool(SearchInternet)(search_internet)

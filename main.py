@@ -1,5 +1,6 @@
 """Home Assistant - Voice assistant with wake word detection."""
 
+import argparse
 import os
 import warnings
 import logging
@@ -9,87 +10,103 @@ logging.getLogger("root").setLevel(logging.ERROR)
 from dotenv import load_dotenv
 load_dotenv()
 
-import webrtcvad
 from openai import OpenAI
 
-from audio import AudioStream, record_until_silence, audio_to_wav_buffer
-from wake_word import WakeWordDetector, wait_for_wake_word
-from transcribe import transcribe
-from tts import speak
 from assistant import process_message
 from history_store import save_conversation
 
 # Configuration
-WAKE_WORD = os.getenv("WAKE_WORD", "hey_jarvis")
 MODEL = os.getenv("MODEL", "gpt-4o")
-TTS_VOICE = os.getenv("TTS_VOICE", "alloy")
-SILENCE_THRESHOLD = float(os.getenv("SILENCE_THRESHOLD", "0.5"))
 DEBUG = os.getenv("DEBUG", "").lower() in ("1", "true", "yes")
 
 
-def log(msg: str) -> None:
-    """Print log message with flush."""
-    print(msg, flush=True)
+def process_and_print(client: OpenAI, text: str) -> None:
+    """Process a message and print the response."""
+    result = process_message(client, text, model=MODEL)
+    print(f"Assistant: {result.final_response}")
+    save_conversation(result.user_input, result.final_response, result.tool_calls)
+
+
+def run_text(client: OpenAI, text: str) -> None:
+    """One-shot text mode."""
+    print(f"You: {text}")
+    process_and_print(client, text)
+
+
+def run_repl(client: OpenAI) -> None:
+    """Interactive text REPL."""
+    print("Home Assistant (text mode). Type 'quit' to exit.\n")
+    while True:
+        try:
+            text = input("You: ").strip()
+        except EOFError:
+            break
+        if not text or text.lower() in ("quit", "exit"):
+            break
+        process_and_print(client, text)
+        print()
+
+
+def run_voice(client: OpenAI) -> None:
+    """Voice mode with wake word detection."""
+    import webrtcvad
+    from audio import AudioStream, record_until_silence, audio_to_wav_buffer
+    from wake_word import WakeWordDetector, wait_for_wake_word
+    from transcribe import transcribe
+    from tts import speak
+
+    wake_word = os.getenv("WAKE_WORD", "hey_jarvis")
+    tts_voice = os.getenv("TTS_VOICE", "alloy")
+    silence_threshold = float(os.getenv("SILENCE_THRESHOLD", "0.5"))
+
+    detector = WakeWordDetector(model_name=wake_word)
+    vad = webrtcvad.Vad(2)
+
+    print("Starting Home Assistant...")
+    print(f"Listening for '{wake_word.replace('_', ' ')}'...\n")
+
+    with AudioStream() as stream:
+        while True:
+            wait_for_wake_word(stream, detector, debug=DEBUG)
+            print("[Activated]")
+
+            audio_bytes = record_until_silence(stream, vad, silence_duration=silence_threshold)
+            if len(audio_bytes) < 1000:
+                print("(No speech detected)\n")
+                continue
+
+            text = transcribe(client, audio_to_wav_buffer(audio_bytes))
+            if not text.strip():
+                print("(Empty transcription)\n")
+                continue
+
+            print(f"You: {text}")
+            result = process_message(client, text, model=MODEL)
+            print(f"Assistant: {result.final_response}\n")
+            save_conversation(result.user_input, result.final_response, result.tool_calls)
+            speak(client, result.final_response, voice=tts_voice)
 
 
 def main() -> None:
     """Main entry point."""
-    log("Starting Home Assistant...")
+    parser = argparse.ArgumentParser(description="Home Assistant")
+    parser.add_argument("text", nargs="?", help="Text to process (one-shot mode)")
+    parser.add_argument("--repl", action="store_true", help="Interactive text mode")
+    args = parser.parse_args()
+
     client = OpenAI()
-    detector = WakeWordDetector(model_name=WAKE_WORD)
-    vad = webrtcvad.Vad(2)  # Aggressiveness 0-3
 
-    log(f"Listening for '{WAKE_WORD.replace('_', ' ')}'...")
-    log("")
-
-    with AudioStream() as stream:
-        while True:
-            # 1. Wait for wake word
-            wait_for_wake_word(stream, detector, debug=DEBUG)
-            log("[Activated]")
-
-            # 2. Record speech
-            audio_bytes = record_until_silence(
-                stream,
-                vad,
-                silence_duration=SILENCE_THRESHOLD,
-            )
-
-            if len(audio_bytes) < 1000:
-                log("(No speech detected)")
-                log("")
-                continue
-
-            # 3. Transcribe
-            wav_buffer = audio_to_wav_buffer(audio_bytes)
-            text = transcribe(client, wav_buffer)
-
-            if not text.strip():
-                log("(Empty transcription)")
-                log("")
-                continue
-
-            log(f"You: {text}")
-
-            # 4. Process with LLM
-            result = process_message(client, text, model=MODEL)
-            log(f"Assistant: {result.final_response}")
-            log("")
-
-            # 5. Save to history
-            save_conversation(
-                result.user_input,
-                result.final_response,
-                result.tool_calls,
-            )
-
-            # 6. Speak response
-            speak(client, result.final_response, voice=TTS_VOICE)
+    if args.text:
+        run_text(client, args.text)
+    elif args.repl:
+        run_repl(client)
+    else:
+        run_voice(client)
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\nThank you for using Home Assistant. Until next time.")
+        print("\n\nGoodbye.")
         exit(0)

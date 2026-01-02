@@ -34,7 +34,15 @@ uv run python -c "from openwakeword import utils; utils.download_models()"
 uv run assistant
 ```
 
-Say "Hey Jarvis" to activate, then speak your command.
+## Usage
+
+```bash
+python main.py                        # Voice mode (wake word + TTS)
+python main.py "what's the weather"   # One-shot text query
+python main.py --repl                 # Interactive text mode
+```
+
+Voice mode listens for "Hey Jarvis", then speak your command.
 
 ## Configuration
 

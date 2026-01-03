@@ -10,6 +10,7 @@ from tools import news  # noqa: F401
 from tools import history  # noqa: F401
 from tools import device_volume  # noqa: F401
 from tools import spotify  # noqa: F401
+from tools import timer  # noqa: F401
 
 # Export registered tools
 TOOLS = get_tools()

@@ -29,8 +29,10 @@ __pycache__/
 *.py[cod]
 *.so
 .venv/
-history.db
 .spotify_token.json
+
+# data
+/data/
 
 # debug
 npm-debug.log*

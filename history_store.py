@@ -6,12 +6,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path(__file__).parent / "history.db"
+DB_PATH = Path(__file__).parent / "data" / "history.db"
 MAX_HISTORY = 20
 
 
 def _get_connection() -> sqlite3.Connection:
     """Get database connection, creating table if needed."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("""

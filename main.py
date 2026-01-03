@@ -2,6 +2,8 @@
 
 import argparse
 import os
+import threading
+import time
 import warnings
 import logging
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
@@ -14,6 +16,7 @@ from openai import OpenAI
 
 from assistant import process_message
 from history_store import save_conversation
+from tools.timer import get_expired_timers
 
 # Configuration
 MODEL = os.getenv("MODEL", "gpt-4o")
@@ -47,6 +50,35 @@ def run_repl(client: OpenAI) -> None:
         print()
 
 
+def start_timer_daemon(
+    client: OpenAI,
+    tts_voice: str,
+    stop_event: threading.Event,
+    audio_lock: threading.Lock,
+) -> None:
+    """Background thread that announces expired timers."""
+    from tts import speak
+
+    while not stop_event.is_set():
+        try:
+            expired = get_expired_timers()
+            for timer in expired:
+                label = timer.get("label")
+                if label:
+                    message = f"Your {label} timer is done."
+                else:
+                    message = "Your timer is done."
+                print(f"[Timer] {message}")
+                if audio_lock.locked():
+                    print("[Timer] Waiting for audio...")
+                with audio_lock:
+                    speak(client, message, voice=tts_voice)
+        except Exception as e:
+            if DEBUG:
+                print(f"[Timer error] {e}")
+        stop_event.wait(1)  # Check every second
+
+
 def run_voice(client: OpenAI) -> None:
     """Voice mode with wake word detection."""
     import webrtcvad
@@ -62,29 +94,43 @@ def run_voice(client: OpenAI) -> None:
     detector = WakeWordDetector(model_name=wake_word)
     vad = webrtcvad.Vad(2)
 
+    # Start timer daemon with shared audio lock
+    stop_event = threading.Event()
+    audio_lock = threading.Lock()
+    timer_thread = threading.Thread(
+        target=start_timer_daemon,
+        args=(client, tts_voice, stop_event, audio_lock),
+        daemon=True
+    )
+    timer_thread.start()
+
     print("Starting Home Assistant...")
     print(f"Listening for '{wake_word.replace('_', ' ')}'...\n")
 
-    with AudioStream() as stream:
-        while True:
-            wait_for_wake_word(stream, detector, debug=DEBUG)
-            print("[Activated]")
+    try:
+        with AudioStream() as stream:
+            while True:
+                wait_for_wake_word(stream, detector, debug=DEBUG)
+                print("[Activated]")
 
-            audio_bytes = record_until_silence(stream, vad, silence_duration=silence_threshold)
-            if len(audio_bytes) < 1000:
-                print("(No speech detected)\n")
-                continue
+                audio_bytes = record_until_silence(stream, vad, silence_duration=silence_threshold)
+                if len(audio_bytes) < 1000:
+                    print("(No speech detected)\n")
+                    continue
 
-            text = transcribe(client, audio_to_wav_buffer(audio_bytes))
-            if not text.strip():
-                print("(Empty transcription)\n")
-                continue
+                text = transcribe(client, audio_to_wav_buffer(audio_bytes))
+                if not text.strip():
+                    print("(Empty transcription)\n")
+                    continue
 
-            print(f"You: {text}")
-            result = process_message(client, text, model=MODEL)
-            print(f"Assistant: {result.final_response}\n")
-            save_conversation(result.user_input, result.final_response, result.tool_calls)
-            speak(client, result.final_response, voice=tts_voice)
+                print(f"You: {text}")
+                result = process_message(client, text, model=MODEL)
+                print(f"Assistant: {result.final_response}\n")
+                save_conversation(result.user_input, result.final_response, result.tool_calls)
+                with audio_lock:
+                    speak(client, result.final_response, voice=tts_voice)
+    finally:
+        stop_event.set()
 
 
 def main() -> None:

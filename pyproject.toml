@@ -24,6 +24,7 @@ volume = "tools.device_volume:main"
 history = "tools.history:main"
 spotify = "tools.spotify:main"
 spotify-auth = "spotify.setup:main"
+timer = "tools.timer:main"
 
 [tool.uv]
 package = true

@@ -15,6 +15,12 @@ from tools.device_volume import (
     SetDeviceVolume, set_device_volume,
 )
 from tools.history import GetHistory, get_history
+from tools.timer import (
+    SetTimer, set_timer_handler,
+    ListTimers, list_timers_handler,
+    CancelTimer, cancel_timer_handler,
+    EditTimer, edit_timer_handler,
+)
 
 
 class TestWeather:
@@ -191,3 +197,83 @@ class TestCLI:
         )
         assert result.returncode == 0
         assert "unavailable" in result.stdout.lower() or "not configured" in result.stdout.lower()
+
+
+class TestTimer:
+    """Timer tool tests."""
+
+    def test_create_timer_duration(self):
+        result = set_timer_handler(SetTimer(time="1h", label="test_duration"))
+        assert "test_duration" in result
+        assert "set for" in result.lower()
+        # Clean up
+        cancel_timer_handler(CancelTimer(identifier="test_duration"))
+
+    def test_create_timer_with_minutes(self):
+        result = set_timer_handler(SetTimer(time="30m", label="test_minutes"))
+        assert "test_minutes" in result
+        assert "30m" in result or "29m" in result  # May be slightly less due to timing
+        cancel_timer_handler(CancelTimer(identifier="test_minutes"))
+
+    def test_create_alarm_time(self):
+        result = set_timer_handler(SetTimer(time="11:59pm", label="test_alarm"))
+        assert "test_alarm" in result
+        assert "11:59 PM" in result
+        cancel_timer_handler(CancelTimer(identifier="test_alarm"))
+
+    def test_list_timers(self):
+        # Create a timer
+        set_timer_handler(SetTimer(time="2h", label="list_test"))
+
+        result = list_timers_handler(ListTimers())
+        assert "list_test" in result
+
+        # Clean up
+        cancel_timer_handler(CancelTimer(identifier="list_test"))
+
+    def test_list_timers_empty(self):
+        # Ensure no timers exist (clean state)
+        result = list_timers_handler(ListTimers())
+        # Either shows timers or says none
+        assert "No active timers" in result or "•" in result
+
+    def test_cancel_timer_by_label(self):
+        set_timer_handler(SetTimer(time="1h", label="cancel_test"))
+        result = cancel_timer_handler(CancelTimer(identifier="cancel_test"))
+        assert "cancelled" in result.lower()
+        assert "cancel_test" in result
+
+    def test_cancel_timer_not_found(self):
+        result = cancel_timer_handler(CancelTimer(identifier="nonexistent_timer_xyz"))
+        assert "no timer found" in result.lower()
+
+    def test_edit_timer(self):
+        set_timer_handler(SetTimer(time="1h", label="edit_test"))
+        result = edit_timer_handler(EditTimer(identifier="edit_test", new_time="2h"))
+        assert "updated" in result.lower()
+        assert "edit_test" in result
+        cancel_timer_handler(CancelTimer(identifier="edit_test"))
+
+    def test_invalid_time_format(self):
+        result = set_timer_handler(SetTimer(time="invalid"))
+        assert "cannot parse" in result.lower()
+
+    def test_timer_cli_create(self):
+        import subprocess
+        result = subprocess.run(
+            ["uv", "run", "timer", "1h", "--label", "cli_test"],
+            capture_output=True, text=True, timeout=10
+        )
+        assert result.returncode == 0
+        assert "cli_test" in result.stdout
+
+        # Clean up
+        subprocess.run(["uv", "run", "timer", "--cancel", "cli_test"], timeout=10)
+
+    def test_timer_cli_list(self):
+        import subprocess
+        result = subprocess.run(
+            ["uv", "run", "timer", "--list"],
+            capture_output=True, text=True, timeout=10
+        )
+        assert result.returncode == 0

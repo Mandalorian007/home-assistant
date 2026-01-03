@@ -31,15 +31,15 @@ cp .env.example .env
 uv run python -c "from openwakeword import utils; utils.download_models()"
 
 # Run
-uv run assistant
+uv run main.py
 ```
 
 ## Usage
 
 ```bash
-python main.py                        # Voice mode (wake word + TTS)
-python main.py "what's the weather"   # One-shot text query
-python main.py --repl                 # Interactive text mode
+uv run main.py                        # Voice mode (wake word + TTS)
+uv run main.py "what's the weather"   # One-shot text query
+uv run main.py --repl                 # Interactive text mode
 ```
 
 Voice mode listens for the configured wake word (default: "Hey Jarvis"), then speak your command.

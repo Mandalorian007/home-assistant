@@ -17,7 +17,6 @@ dependencies = [
 ]
 
 [project.scripts]
-assistant = "main:main"
 weather = "tools.weather:main"
 news = "tools.news:main"
 search = "tools.search:main"

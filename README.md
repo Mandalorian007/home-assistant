@@ -42,7 +42,7 @@ python main.py "what's the weather"   # One-shot text query
 python main.py --repl                 # Interactive text mode
 ```
 
-Voice mode listens for "Hey Jarvis", then speak your command.
+Voice mode listens for the configured wake word (default: "Hey Jarvis"), then speak your command.
 
 ## Configuration
 
@@ -50,10 +50,20 @@ Voice mode listens for "Hey Jarvis", then speak your command.
 |----------|---------|-------------|
 | `OPENAI_API_KEY` | *required* | OpenAI API key |
 | `PERPLEXITY_API_KEY` | *optional* | Perplexity API key for internet search |
-| `WAKE_WORD` | `hey_jarvis` | Wake word (`alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`) |
+| `WAKE_WORD` | `hey_jarvis` | Wake word (`alexa`, `hey_mycroft`, `hey_jarvis`, `hey_rhasspy`, `hey_aero`) |
 | `SILENCE_THRESHOLD` | `0.5` | Seconds of silence to end recording |
 | `MODEL` | `gpt-4o` | OpenAI chat model |
 | `TTS_VOICE` | `alloy` | TTS voice (`alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`) |
+
+### Custom Wake Words
+
+Train your own wake word using the [openWakeWord Colab notebook](https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb?usp=sharing).
+
+**Note:** When prompted to restart the runtime, decline.
+
+1. Run the notebook to generate a `.tflite` model
+2. Place the model in `wakewords/` (e.g., `wakewords/hey_aero.tflite`)
+3. Set `WAKE_WORD=hey_aero` in your `.env`
 
 ## Tools
 

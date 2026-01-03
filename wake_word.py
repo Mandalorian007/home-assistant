@@ -1,11 +1,33 @@
 """Wake word detection using openWakeWord."""
 
+from pathlib import Path
+
 import numpy as np
 from openwakeword.model import Model
 
 from audio import AudioStream, SAMPLE_RATE
 
 DEFAULT_THRESHOLD = 0.5
+WAKEWORDS_DIR = Path(__file__).parent / "wakewords"
+
+
+def _resolve_model(model_name: str) -> tuple[str, str]:
+    """Resolve model name to path and inference framework.
+
+    For custom models, checks wakewords/ directory for .onnx or .tflite files.
+    Built-in models (hey_jarvis, alexa, etc.) are returned as-is.
+
+    Returns:
+        Tuple of (model_path, inference_framework)
+    """
+    # Check for custom model in wakewords directory (prefer tflite for efficiency)
+    for ext, framework in [(".tflite", "tflite"), (".onnx", "onnx")]:
+        custom_path = WAKEWORDS_DIR / f"{model_name}{ext}"
+        if custom_path.exists():
+            return str(custom_path), framework
+
+    # Return as-is for built-in models (use default tflite framework)
+    return model_name, "tflite"
 
 
 class WakeWordDetector:
@@ -18,7 +40,11 @@ class WakeWordDetector:
     ):
         self.model_name = model_name
         self.threshold = threshold
-        self.model = Model(wakeword_models=[model_name])
+        model_path, framework = _resolve_model(model_name)
+        self.model = Model(
+            wakeword_models=[model_path],
+            inference_framework=framework,
+        )
 
     def detect(self, audio: np.ndarray, debug: bool = False) -> bool:
         """Check if wake word is present in audio frame.
